@@ -2,6 +2,29 @@ import openai
 import google.auth
 from googleapiclient.discovery import build
 import time
+import PyPDF2
+
+# Function to load and extract text from the PDF
+def load_pdf_content(pdf_path):
+    try:
+        with open(pdf_path, "rb") as file:
+            reader = PyPDF2.PdfReader(file)
+            content = ""
+            for page in reader.pages:
+                content += page.extract_text()
+            return content
+    except Exception as e:
+        print(f"Error reading PDF: {e}")
+        return None
+
+# Load the PDF content once
+PDF_PATH = "path_to_your_pdf_file.pdf"
+pdf_content = load_pdf_content(PDF_PATH)
+
+if pdf_content:
+    print("PDF content successfully loaded.")
+else:
+    print("Failed to load PDF content.")
 
 # OpenAI API Key
 openai.api_key = "your_openai_api_key"
@@ -38,12 +61,21 @@ def chat_bot(youtube, live_chat_id):
 
                 # Remove the prefix before sending to GPT
                 user_message = user_message[2:].strip()
+
+                # Ensure PDF content is loaded
+                if not pdf_content:
+                    print("The reference document is unavailable.")
+                    continue
+
                 print(f"{user_name}: {user_message}")
 
-                # Process with GPT
+                # Process with GPT using the PDF content as context
                 gpt_response = openai.ChatCompletion.create(
                     model="gpt-4",
-                    messages=[{"role": "user", "content": user_message}]
+                    messages=[
+                        {"role": "system", "content": f"Answer based on the following document: {pdf_content}"},
+                        {"role": "user", "content": user_message}
+                    ]
                 )
                 bot_message = gpt_response["choices"][0]["message"]["content"]
                 print(f"Bot: {bot_message}")
